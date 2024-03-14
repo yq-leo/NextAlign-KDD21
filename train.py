@@ -8,7 +8,8 @@ from model.model import Model
 from model.negative_sampling import negative_sampling_exact
 import networkx as nx
 import argparse
-import time, os
+import time
+import os
 from dataset.data import Train_Data
 from torch.utils.data import DataLoader
 
@@ -234,6 +235,8 @@ for epoch in range(args.epochs):
 
     print("Max test hits:{} at epoch: {}".format(max_hits, max_epoch))
 
+if not os.path.exists("results"):
+    os.mkdir("results")
 if args.use_attr:
     with open('results/results_%s_attr_%.1f.txt' % (args.dataset, args.ratio), 'a+') as f:
         f.write(', '.join([str(x) for x in max_hits]) + '\n')
