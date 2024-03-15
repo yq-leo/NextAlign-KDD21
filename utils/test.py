@@ -51,6 +51,7 @@ def test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_set, 
             for i in range(len(S)):
                 S[i][anchor_links2] = 0
         idx2 = np.argsort(-S, axis=1)[:, :topk[-1]]
+        idx2_complete = np.argsort(-S, axis=1)
 
         test_set = set(tuple(i) for i in test_set)
         hits_l = []
@@ -62,7 +63,14 @@ def test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_set, 
             count = len(idx.intersection(test_set))
             hit = round(count/len(test_set), 4)
             hits_l.append(hit)
+        # MRR
+        mrr_l = 0
+        anchor_l2r = {v1: v2 for (v1, v2) in test_set}
+        for i, v1 in enumerate(test_nodes1):
+            mrr_l += 1 / (1 + np.argwhere(idx2_complete[i, :] == anchor_l2r[v1]).flatten()[0])
+        mrr_l = round(mrr_l / len(test_set), 4)
 
+        # G2 to G1
         x1 = out_x[node_mapping1]
         x2 = out_x[node_mapping2[test_nodes2]]
         x1_1 = x1[:, :dim // 2]
@@ -80,6 +88,7 @@ def test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_set, 
             S = -S
         S = expit(S)
         idx2 = np.argsort(-S, axis=0)[:topk[-1], :]
+        idx2_complete = np.argsort(-S, axis=0)
 
         test_set = set(tuple(i) for i in test_set)
         hits_r = []
@@ -91,9 +100,16 @@ def test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_set, 
             count = len(idx.intersection(test_set))
             hit = round(count / len(test_set), 4)
             hits_r.append(hit)
+        # MRR
+        mrr_r = 0
+        anchor_r2l = {v2: v1 for (v1, v2) in test_set}
+        for j, v2 in enumerate(test_nodes2):
+            mrr_r += 1 / (1 + np.argwhere(idx2_complete[:, j] == anchor_r2l[v2]).flatten()[0])
+        mrr_r = round(mrr_r / len(test_set), 4)
 
         hits_l = np.array(hits_l)
         hits_r = np.array(hits_r)
         hits = np.maximum(hits_l, hits_r)
+        mrr = max(mrr_l, mrr_r)
 
-    return hits
+    return hits, mrr

@@ -6,6 +6,7 @@ from utils.test import test
 from utils.node2vec import load_walks
 from model.model import Model
 from model.negative_sampling import negative_sampling_exact
+from stat_utils import write_training_records_to_csv, plot_training_records
 import networkx as nx
 import argparse
 import time
@@ -22,7 +23,7 @@ parser.add_argument('--ratio', type=float, default=0.2, help='training ratio.')
 parser.add_argument('--coeff1', type=float, default=1.0, help='coefficient for within-network link prediction loss.')
 parser.add_argument('--coeff2', type=float, default=1.0, help='coefficient for anchor link prediction loss.')
 parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-parser.add_argument('--epochs', type=int, default=100, help='maximum number of epochs.')
+parser.add_argument('--epochs', type=int, default=200, help='maximum number of epochs.')
 parser.add_argument('--batch_size', type=int, default=300, help='batch_size.')
 parser.add_argument('--walks_num', type=int, default=100,
                         help='length of walk per user node.')
@@ -38,7 +39,7 @@ parser.add_argument('--walk_length', type=int, default=80,
                     help='Length of walk per source. Default is 80.')
 parser.add_argument('--num_walks', type=int, default=10,
                     help='Number of walks per source. Default is 10.')
-parser.add_argument('--dataset', type=str, default='new_ACM-DBLP', help='dataset name.')
+parser.add_argument('--dataset', type=str, default='phone-email', help='dataset name.') # org default: new_ACM-DBLP
 parser.add_argument('--use_attr', action='store_true')
 parser.add_argument('--gpu', type=int, default=0, help='cuda number.')
 parser.add_argument('--dist', type=str, default='L1', help='distance for scoring.')
@@ -150,6 +151,8 @@ total_loss = 0
 topk = [1, 10, 30, 50, 100]
 max_hits = np.zeros(len(topk), dtype=np.float32)
 max_hit_10, max_hit_30, max_epoch = 0, 0, 0
+max_mrr = 0
+stat = {'loss': [], 'mrr': [], 'hit': []}
 
 
 for epoch in range(args.epochs):
@@ -223,29 +226,36 @@ for epoch in range(args.epochs):
     avg_t_loss = round(t_loss / ((epoch+1) * data_loader_size), 2)
     time_cost = [avg_t_model, avg_t_neg_sampling, avg_t_get_emb, avg_t_loss]
 
-    train_hits = test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, anchor_links, anchor_links2, args.dist)
-    hits = test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_pairs, anchor_links2, args.dist, 'testing')
-    print("Epoch:{}, Training loss:{}, Train_Hits:{},  Test_Hits:{}, Time:{}".format(
-        epoch+1, round(total_loss.item(), 4), train_hits, hits, time_cost))
+    train_hits, train_mrr = test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, anchor_links, anchor_links2, args.dist)
+    hits, mrr = test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_pairs, anchor_links2, args.dist, 'testing')
+    print("Epoch:{}, Training loss:{}, Train_Hits:{}, Train_MRR: {}, Test_Hits:{}, Test_MRR: {}, Time:{}".format(
+        epoch+1, round(total_loss.item(), 4), train_hits, train_mrr, hits, mrr, time_cost))
 
     if hits[2] > max_hit_30 or (hits[2] == max_hit_30 and hits[1] > max_hits[1]):
         max_hit_30 = hits[2]
         max_hits = hits
         max_epoch = epoch + 1
+    if mrr > max_mrr:
+        max_mrr = mrr
+
+    stat['loss'].append(round(total_loss.item(), 4))
+    stat['mrr'].append(mrr)
+    stat['hit'].append({topk[i]: hits[i] for i in range(len(hits))})
 
     print("Max test hits:{} at epoch: {}".format(max_hits, max_epoch))
+    print(f"Max MRR: {max_mrr}")
 
 if not os.path.exists("results"):
     os.mkdir("results")
 if args.use_attr:
     with open('results/results_%s_attr_%.1f.txt' % (args.dataset, args.ratio), 'a+') as f:
-        f.write(', '.join([str(x) for x in max_hits]) + '\n')
+        f.write(', '.join([str(x) for x in max_hits] + [str(max_mrr)]) + '\n')
 else:
     with open('results/results_%s_%.1f.txt' % (args.dataset, args.ratio), 'a+') as f:
-        f.write(', '.join([str(x) for x in max_hits]) + '\n')
+        f.write(', '.join([str(x) for x in max_hits] + [str(max_mrr)]) + '\n')
 
-
-
+write_training_records_to_csv(args.epochs, stat, f"results/{args.dataset}_training_records.csv", topk)
+plot_training_records(args.dataset)
 
 
 
