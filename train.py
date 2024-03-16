@@ -116,6 +116,17 @@ torch.manual_seed(args.seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
     args.device = 'cuda:%d' % args.gpu
+gpu_info = {
+    "is_available": torch.cuda.is_available(),
+    "count": torch.cuda.device_count(),
+    "name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A",
+    "capability": torch.cuda.get_device_capability(0) if torch.cuda.is_available() else "N/A",
+    "memory_allocated": torch.cuda.memory_allocated(0) if torch.cuda.is_available() else "N/A",
+    "memory_reserved": torch.cuda.memory_reserved(0) if torch.cuda.is_available() else "N/A"
+}
+print(args.device)
+print(gpu_info)
+
 
 landmark = torch.from_numpy(anchor_nodes1).to(args.device)
 num_nodes = x[0].shape[0]
