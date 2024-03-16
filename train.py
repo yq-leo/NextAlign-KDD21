@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import dgl
 from utils.utils import *
@@ -23,7 +24,7 @@ parser.add_argument('--ratio', type=float, default=0.2, help='training ratio.')
 parser.add_argument('--coeff1', type=float, default=1.0, help='coefficient for within-network link prediction loss.')
 parser.add_argument('--coeff2', type=float, default=1.0, help='coefficient for anchor link prediction loss.')
 parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
-parser.add_argument('--epochs', type=int, default=200, help='maximum number of epochs.')
+parser.add_argument('--epochs', type=int, default=50, help='maximum number of epochs.')
 parser.add_argument('--batch_size', type=int, default=300, help='batch_size.')
 parser.add_argument('--walks_num', type=int, default=100,
                         help='length of walk per user node.')
@@ -39,8 +40,8 @@ parser.add_argument('--walk_length', type=int, default=80,
                     help='Length of walk per source. Default is 80.')
 parser.add_argument('--num_walks', type=int, default=10,
                     help='Number of walks per source. Default is 10.')
-parser.add_argument('--dataset', type=str, default='phone-email', help='dataset name.') # org default: new_ACM-DBLP
-parser.add_argument('--use_attr', action='store_true')
+parser.add_argument('--dataset', type=str, default='noisy-cora1-cora2', help='dataset name.') # org default: new_ACM-DBLP
+parser.add_argument('--use_attr', default=True, action='store_true')
 parser.add_argument('--gpu', type=int, default=0, help='cuda number.')
 parser.add_argument('--dist', type=str, default='L1', help='distance for scoring.')
 
@@ -51,6 +52,9 @@ anchor_nodes1, anchor_nodes2 = anchor_links[:, 0], anchor_links[:, 1]
 anchor_links2 = anchor_nodes2
 
 G1, G2 = nx.Graph(), nx.Graph()
+if args.dataset == "noisy-cora1-cora2":
+    G1.add_nodes_from(np.arange(x1.shape[0]))
+    G2.add_nodes_from(np.arange(x2.shape[0]))
 G1.add_edges_from(edge_index1)
 G2.add_edges_from(edge_index2)
 n1, n2 = G1.number_of_nodes(), G2.number_of_nodes()
@@ -116,6 +120,11 @@ torch.manual_seed(args.seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(args.seed)
     args.device = 'cuda:%d' % args.gpu
+    # if args.dataset == 'noisy-cora1-cora2':
+    #     torch.cuda.empty_cache()
+    #     torch.backends.cudnn.benchmark = True
+    #     torch.backends.cudnn.enabled = True
+
 gpu_info = {
     "is_available": torch.cuda.is_available(),
     "count": torch.cuda.device_count(),
@@ -265,8 +274,12 @@ else:
     with open('results/results_%s_%.1f.txt' % (args.dataset, args.ratio), 'a+') as f:
         f.write(', '.join([str(x) for x in max_hits] + [str(max_mrr)]) + '\n')
 
-write_training_records_to_csv(args.epochs, stat, f"results/{args.dataset}_training_records.csv", topk)
-plot_training_records(args.dataset)
+record_f = f"results/{args.dataset}_training_records.csv"
+if args.use_attr:
+    record_f = f"results/{args.dataset}_attr_training_records.csv"
+
+write_training_records_to_csv(args.epochs, stat, record_f, topk)
+plot_training_records(args.dataset, args.use_attr)
 
 
 

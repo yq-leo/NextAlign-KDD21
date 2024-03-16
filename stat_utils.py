@@ -44,9 +44,12 @@ def read_training_records_from_csv(file_path, hit_top_ks = (1, 5, 10, 30, 50, 10
     return loss, mrr, hits
 
 
-def plot_training_records(data):
+def plot_training_records(data, use_attr):
     # Load your DataFrame
-    df = pd.read_csv(f'results/{data}_training_records.csv')  # Update with your CSV file path
+    dst_f = f'results/{data}_training_records.csv'
+    if use_attr:
+        dst_f = f'results/{data}_attr_training_records.csv'
+    df = pd.read_csv(dst_f)  # Update with your CSV file path
 
     # Create a figure and a set of subplots
     fig, axs = plt.subplots(1, 3, figsize=(18, 6))  # 2 Rows, 2 Column
