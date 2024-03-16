@@ -46,10 +46,10 @@ def read_training_records_from_csv(file_path, hit_top_ks = (1, 5, 10, 30, 50, 10
 
 def plot_training_records(data, use_attr):
     # Load your DataFrame
-    dst_f = f'results/{data}_training_records.csv'
+    src_f = f'results/{data}_training_records.csv'
     if use_attr:
-        dst_f = f'results/{data}_attr_training_records.csv'
-    df = pd.read_csv(dst_f)  # Update with your CSV file path
+        src_f = f'results/{data}_attr_training_records.csv'
+    df = pd.read_csv(src_f)  # Update with your CSV file path
 
     # Create a figure and a set of subplots
     fig, axs = plt.subplots(1, 3, figsize=(18, 6))  # 2 Rows, 2 Column
@@ -81,5 +81,8 @@ def plot_training_records(data, use_attr):
 
     # Show the big graph containing all subgraphs
     plt.legend()
-    plt.savefig(f"results/{data}_plot.jpg", dpi=720)
+    dst_f = f"results/{data}_plot.jpg"
+    if use_attr:
+        dst_f = f"results/{data}_attr_plot.jpg"
+    plt.savefig(dst_f, dpi=720)
     plt.show()
