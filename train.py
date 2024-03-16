@@ -41,7 +41,7 @@ parser.add_argument('--walk_length', type=int, default=80,
 parser.add_argument('--num_walks', type=int, default=10,
                     help='Number of walks per source. Default is 10.')
 parser.add_argument('--dataset', type=str, default='noisy-cora1-cora2', help='dataset name.') # org default: new_ACM-DBLP
-parser.add_argument('--use_attr', default=True, action='store_true')
+parser.add_argument('--use_attr', default=False, action='store_true')
 parser.add_argument('--gpu', type=int, default=0, help='cuda number.')
 parser.add_argument('--dist', type=str, default='L1', help='distance for scoring.')
 
