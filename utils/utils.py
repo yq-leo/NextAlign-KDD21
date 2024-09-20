@@ -1,4 +1,5 @@
 import numpy as np
+import networkx as nx
 
 def load_data(file_name, p, use_attr):
     '''
@@ -22,6 +23,7 @@ def load_data(file_name, p, use_attr):
         x1, x2 = None, None
 
     return edge_index1, edge_index2, x1, x2, anchor_links, test_pairs
+
 
 def merge_graphs(edge_index1, edge_index2, x1, x2, anchor_links):
     '''
@@ -139,3 +141,46 @@ def balance_inputs(context_pairs1, context_pairs2):
         context_pairs2 = np.vstack([context_pairs2, imputes])
     return context_pairs1, context_pairs2
 
+
+def perturb_edges(G, ratio):
+    """
+    Adding structural noise through edge perturbation.
+    :param G: input graph
+    :param ratio: edge noise ratio
+    :return:
+    """
+
+    num_node, num_edges = G.number_of_nodes(), G.number_of_edges()
+    num_perturb_edges = int(num_edges * ratio)
+
+    cnt = 0
+    while cnt < num_perturb_edges:
+        u, v = np.random.randint(0, num_node), np.random.randint(0, num_node)
+        if G.has_edge(u, v):
+            G.remove_edge(u, v)
+            if not nx.is_connected(G):
+                G.add_edge(u, v)
+            else:
+                cnt += 1
+        else:
+            G.add_edge(u, v)
+            cnt += 1
+
+    return G
+
+
+def perturb_attr(x, ratio):
+    """
+    Adding attribute noise through feature perturbation.
+    :param x: input node attributes
+    :param ratio: noise ratio
+    :return: perturbed node attributes
+    """
+
+    num_node, num_attr = x.shape
+    num_perturb_attrs = int(num_attr * ratio)
+
+    perturbed_attr = np.random.choice(num_attr, num_perturb_attrs, replace=False)
+    x[:, perturbed_attr] = 1 - x[:, perturbed_attr]
+
+    return x
