@@ -52,7 +52,7 @@ anchor_nodes1, anchor_nodes2 = anchor_links[:, 0], anchor_links[:, 1]
 anchor_links2 = anchor_nodes2
 
 G1, G2 = nx.Graph(), nx.Graph()
-if args.dataset == "noisy-cora1-cora2":
+if args.use_attr:
     G1.add_nodes_from(np.arange(x1.shape[0]))
     G2.add_nodes_from(np.arange(x2.shape[0]))
 G1.add_edges_from(edge_index1)
