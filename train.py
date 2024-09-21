@@ -80,7 +80,7 @@ for run in range(args.runs):
     # add edge or attribute noise
     G2 = perturb_edges(G2, args.edge_noise)
     if args.use_attr:
-        x2 = perturb_attr(x2, args.attr_noise, args.strong_noise)
+        x1 = perturb_attr(x1, args.attr_noise, args.strong_noise)
 
     for edge in G1.edges():
         G1[edge[0]][edge[1]]['weight'] = 1
