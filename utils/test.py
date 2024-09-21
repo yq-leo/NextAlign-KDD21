@@ -113,3 +113,16 @@ def test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_set, 
         mrr = max(mrr_l, mrr_r)
 
     return hits, mrr
+
+
+def rm_out(arr):
+    """
+    Remove outliers from an array
+    :param arr: input array
+    :return:  without outliers
+    """
+    arr = np.sort(arr)
+    if len(arr) <= 3:
+        return arr
+    num_rm = len(arr) // 2
+    return arr[int(num_rm / 2) + num_rm % 2: -(num_rm // 2)]

@@ -3,7 +3,7 @@ import torch
 import dgl
 from utils.utils import *
 from utils.rwr_scoring import rwr_scores
-from utils.test import test
+from utils.test import test, rm_out
 from utils.node2vec import load_walks
 from model.model import Model
 from model.negative_sampling import negative_sampling_exact
@@ -52,6 +52,8 @@ parser.add_argument('--edge_noise', type=float, default=0.0, help='edge noise')
 parser.add_argument('--attr_noise', type=float, default=0.0, help='attribute noise')
 parser.add_argument('--record', action='store_true', help='record results')
 parser.add_argument('--exp_name', type=str, default='exp', help='experiment name')
+parser.add_argument('--robust', action='store_true', help='remove metric outliers')
+parser.add_argument('--strong_noise', action='store_true', help='use strong attribute noise')
 
 args = parser.parse_args()
 
@@ -78,7 +80,7 @@ for run in range(args.runs):
     # add edge or attribute noise
     G2 = perturb_edges(G2, args.edge_noise)
     if args.use_attr:
-        x2 = perturb_attr(x2, args.attr_noise)
+        x2 = perturb_attr(x2, args.attr_noise, args.strong_noise)
 
     for edge in G1.edges():
         G1[edge[0]][edge[1]]['weight'] = 1
@@ -295,12 +297,22 @@ for run in range(args.runs):
     # plot_training_records(args.dataset, args.use_attr)
 
 final_hits = dict()
+final_hits_robust = dict()
 final_hits_std = dict()
+final_hits_robust_std = dict()
 for k in topk:
+    max_hits_list = np.sort(np.array(max_hits_list[k]))
     final_hits[k] = np.mean(max_hits_list[k])
     final_hits_std[k] = np.std(max_hits_list[k])
+    max_hits_list = rm_out(max_hits_list)
+    final_hits_robust[k] = np.mean(max_hits_list)
+    final_hits_robust_std[k] = np.std(max_hits_list)
 final_mrr = np.mean(max_mrr_list)
 final_mrr_std = np.std(max_mrr_list)
+max_mrr_list = np.sort(np.array(max_mrr_list))
+max_mrr_list = rm_out(max_mrr_list)
+final_mrr_robust = np.mean(max_mrr_list)
+final_mrr_robust_std = np.std(max_mrr_list)
 print(f"Final results: {final_hits}, {final_mrr}")
 
 if args.record:
@@ -318,5 +330,7 @@ if args.record:
         if exp_name == "edge_noise":
             header = f"{args.dataset}_(edge-{args.edge_noise:.1f})"
         else:
-            header = f"{args.dataset}_(attr-{args.attr_noise:.1f})"
+            header = f"{args.dataset}_(attr-{args.attr_noise:.1f}{'_strong' if args.strong_noise else ''})"
         writer.writerow([header] + [f"{final_hits[k]:.3f}" for k in topk] + [f"{final_mrr:.3f}"] + [f"{final_hits_std[k]:.3f}" for k in topk] + [f"{final_mrr_std:.3f}"])
+        if args.robust:
+            writer.writerow([header + "_robust"] + [f"{final_hits_robust[k]:.3f}" for k in topk] + [f"{final_mrr_robust:.3f}"] + [f"{final_hits_robust_std[k]:.3f}" for k in topk] + [f"{final_mrr_robust_std:.3f}"])
