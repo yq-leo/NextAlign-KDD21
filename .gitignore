@@ -3,3 +3,5 @@
 **/__pycache__/
 dataset/node2vec_context_pairs_ACM-DBLP_0.2.npz
 dataset/rwr_emb_ACM-DBLP_0.2.npz
+nextalign_venv/
+*.log
