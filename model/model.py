@@ -39,11 +39,11 @@ class Model(nn.Module):
         self.loss_func1 = nn.BCEWithLogitsLoss()
         self.loss_func2 = nn.BCEWithLogitsLoss()
 
-    def forward(self, g, x, etype):
+    def forward(self, edges, x, etype):
         '''
         Forward pass of the whole model.
 
-        @param g: input merged graph.
+        @param edges: edge list of merged graph.
         @param x: input node attributes of merged graph. Either a tuple (one-hot encoding, pre-positioning)
                   for plain graph or (one-hot encoding, pre-positioning, node attributes) for attributed graph.
         @param etype: edge types of input merged graph.
@@ -53,7 +53,7 @@ class Model(nn.Module):
         x1, x2 = x[0], x[1]
 
         # out_x1 = self.conv_one_hot(g, x1, etype)
-        edges = torch.vstack(g.edges())
+        # edges = torch.vstack(g.edges())
         out_x1 = self.conv_one_hot(edges, x1, etype)
         out_x1 = nn.functional.normalize(out_x1, p=1, dim=-1)
 
@@ -75,7 +75,8 @@ class Model(nn.Module):
         out_x = out_x + x2  # skip connections to encode pre-positioning.
 
         if self.num_attrs > 0:
-            out_x3 = self.conv_attr(g, x[2], etype)
+            # out_x3 = self.conv_attr(g, x[2], etype)
+            out_x3 = self.conv_attr(edges, x[2], etype)
             out_x3 = nn.functional.normalize(out_x3, p=1, dim=-1)
             out_x = torch.cat([out_x, out_x3], dim=1)
 

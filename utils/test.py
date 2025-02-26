@@ -4,7 +4,7 @@ import torch
 import numpy as np
 
 
-def test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_set, anchor_links2, dist, mode='training'):
+def test(model, topk, edges, x, edge_types, node_mapping1, node_mapping2, test_set, anchor_links2, dist, mode='training'):
     '''
     Testing phase.
     @param model: current model
@@ -27,7 +27,7 @@ def test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_set, 
 
     test_nodes1, test_nodes2 = test_set[:, 0], test_set[:, 1]
     with torch.no_grad():
-        out_x = model(g, x, edge_types).cpu().detach().numpy()
+        out_x = model(edges, x, edge_types).cpu().detach().numpy()
         dim = out_x.shape[1]
         weights = model.score_lin.weight[0].cpu().detach().numpy()
         x1 = out_x[test_set[:, 0]]

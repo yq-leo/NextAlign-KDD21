@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-import dgl
+# import dgl
 from utils.utils import *
 from utils.rwr_scoring import rwr_scores
 from utils.test import test, rm_out
@@ -42,7 +42,7 @@ parser.add_argument('--walk_length', type=int, default=20,
                     help='Length of walk per source. Default is 80.')
 parser.add_argument('--num_walks', type=int, default=10,
                     help='Number of walks per source. Default is 10.')
-parser.add_argument('--dataset', type=str, default='noisy-cora1-cora2', help='dataset name.') # org default: new_ACM-DBLP
+parser.add_argument('--dataset', type=str, default='phone-email', help='dataset name.') # org default: new_ACM-DBLP
 parser.add_argument('--use_attr', default=False, action='store_true')
 parser.add_argument('--gpu', type=int, default=0, help='cuda number.')
 parser.add_argument('--dist', type=str, default='L1', help='distance for scoring.')
@@ -161,7 +161,8 @@ for run in range(args.runs):
     # to device
     model = model.to(args.device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    g = dgl.graph((edge_index.T[0], edge_index.T[1]), device=args.device)
+    # g = dgl.graph((edge_index.T[0], edge_index.T[1]), device=args.device)
+    edge_index = torch.from_numpy(edge_index).to(args.device)
     x1 = torch.from_numpy(x[0]).to(args.device)
     x2 = torch.from_numpy(x[1]).to(args.device)
     x = (x1, x2, torch.from_numpy(x[2]).to(args.device)) if args.use_attr else (x1, x2)
@@ -186,7 +187,6 @@ for run in range(args.runs):
     max_mrr = 0
     stat = {'loss': [], 'mrr': [], 'hit': []}
 
-
     for epoch in range(args.epochs):
         model.train()
         for i, data in enumerate(data_loader):
@@ -199,7 +199,7 @@ for run in range(args.runs):
             pos_context_nodes2 = nodes2[:, 1].reshape((-1,))
             # forward pass
             t0 = time.time()
-            out_x = model(g, x, edge_types)
+            out_x = model(edge_index.T, x, edge_types)
             t_model += (time.time() - t0)
 
             t0 = time.time()
@@ -258,8 +258,8 @@ for run in range(args.runs):
         avg_t_loss = round(t_loss / ((epoch+1) * data_loader_size), 2)
         time_cost = [avg_t_model, avg_t_neg_sampling, avg_t_get_emb, avg_t_loss]
 
-        train_hits, train_mrr = test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, anchor_links, anchor_links2, args.dist)
-        hits, mrr = test(model, topk, g, x, edge_types, node_mapping1, node_mapping2, test_pairs, anchor_links2, args.dist, 'testing')
+        train_hits, train_mrr = test(model, topk, edge_index.T, x, edge_types, node_mapping1, node_mapping2, anchor_links, anchor_links2, args.dist)
+        hits, mrr = test(model, topk, edge_index.T, x, edge_types, node_mapping1, node_mapping2, test_pairs, anchor_links2, args.dist, 'testing')
         print("Epoch:{}, Training loss:{}, Train_Hits:{}, Train_MRR: {}, Test_Hits:{}, Test_MRR: {}, Time:{}".format(
             epoch+1, round(total_loss.item(), 4), train_hits, train_mrr, hits, mrr, time_cost))
 

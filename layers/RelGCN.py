@@ -1,11 +1,11 @@
 import torch
 import functools, math
 import torch.nn as nn
-from dgl import function as fn
-from dgl.nn.pytorch import utils
-from dgl.base import DGLError
+# from dgl import function as fn
+# from dgl.nn.pytorch import utils
+# from dgl.base import DGLError
 
-
+"""
 class RelGCN_dgl(nn.Module):
     def __init__(self, in_feat, out_feat, num_rels, bias=True, activation=None, self_loop=True, dropout=0.0, alpha=0.5, param=True):
         '''
@@ -110,12 +110,13 @@ class RelGCN_dgl(nn.Module):
 
             return node_repr
 
+"""
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import MessagePassing
-from torch_geometric.utils import add_self_loops, degree
+# from torch_geometric.nn import MessagePassing
+# from torch_geometric.utils import add_self_loops, degree
 from torch_scatter import scatter_add
 
 
@@ -180,7 +181,9 @@ class RelGCN(nn.Module):
         msg = self.message(x[src], edge_type)  # Call the message function for each edge
 
         # Aggregation (similar to DGL's fn.sum)
-        aggregated_msg = scatter_add(msg, dst, dim=0, dim_size=num_nodes)
+        # aggregated_msg = scatter_add(msg, dst, dim=0, dim_size=num_nodes)
+        aggregated_msg = torch.zeros((num_nodes, *msg.shape[1:]), dtype=msg.dtype, device=msg.device)
+        aggregated_msg.index_add_(0, dst, msg)
 
         # Feature Fusion (scaling with sqrt(alpha))
         node_repr = aggregated_msg * math.sqrt(self.alpha)
