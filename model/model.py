@@ -3,6 +3,7 @@ from layers.RelGCN import RelGCN
 import torch.nn.functional as F
 import torch
 
+
 class Model(nn.Module):
     def __init__(self, num_nodes, out_features, anchor_nodes, distance='inner', num_anchors=None, num_attrs=0):
         '''
@@ -51,12 +52,15 @@ class Model(nn.Module):
         '''
         x1, x2 = x[0], x[1]
 
-        out_x1 = self.conv_one_hot(g, x1, etype)
+        # out_x1 = self.conv_one_hot(g, x1, etype)
+        edges = torch.vstack(g.edges())
+        out_x1 = self.conv_one_hot(edges, x1, etype)
         out_x1 = nn.functional.normalize(out_x1, p=1, dim=-1)
 
         anchor_emb = torch.zeros_like(x2)
         anchor_emb[self.anchor_nodes, torch.arange(len(self.anchor_nodes))] += 1
-        out_x2 = self.conv_anchor(g, anchor_emb, etype)
+        # out_x2 = self.conv_anchor(g, anchor_emb, etype)
+        out_x2 = self.conv_anchor(edges, anchor_emb, etype)
         out_x2 = nn.functional.normalize(out_x2, p=1, dim=-1)
 
         anchor_emb = out_x1[self.anchor_nodes]
@@ -111,7 +115,6 @@ class Model(nn.Module):
         predict_scores = self.score_lin(scores)
 
         return predict_scores
-
 
     def loss(self, input_embs):
         '''

@@ -19,26 +19,26 @@ import csv
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--seed', type=int, default=123, help='seed')
-parser.add_argument('--dim', type=int, default=128, help='dimension of output embeddings.')
+parser.add_argument('--seed', type=int, default=12, help='seed')
+parser.add_argument('--dim', type=int, default=16, help='dimension of output embeddings.')
 parser.add_argument('--num_layer', type=int, default=1, help='number of layers.')
 parser.add_argument('--ratio', type=float, default=0.2, help='training ratio.')
 parser.add_argument('--coeff1', type=float, default=1.0, help='coefficient for within-network link prediction loss.')
 parser.add_argument('--coeff2', type=float, default=1.0, help='coefficient for anchor link prediction loss.')
-parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
+parser.add_argument('--lr', type=float, default=0.05, help='learning rate')
 parser.add_argument('--epochs', type=int, default=50, help='maximum number of epochs.')
-parser.add_argument('--batch_size', type=int, default=300, help='batch_size.')
-parser.add_argument('--walks_num', type=int, default=100,
+parser.add_argument('--batch_size', type=int, default=512, help='batch_size.')
+parser.add_argument('--walks_num', type=int, default=20,
                         help='length of walk per user node.')
 parser.add_argument('--N_steps', type=int, default=10,
                         help='burn-in iteration.')
-parser.add_argument('--N_negs', type=int, default=20,
+parser.add_argument('--N_negs', type=int, default=50,
                         help='number of negative samples per anchor node.')
 parser.add_argument('--p', type=int, default=1,
                         help='return hyperparameter. Default is 1.')
 parser.add_argument('--q', type=int, default=1,
                         help='inout hyperparameter. Default is 1.')
-parser.add_argument('--walk_length', type=int, default=80,
+parser.add_argument('--walk_length', type=int, default=20,
                     help='Length of walk per source. Default is 80.')
 parser.add_argument('--num_walks', type=int, default=10,
                     help='Number of walks per source. Default is 10.')
@@ -81,6 +81,7 @@ for run in range(args.runs):
     G2 = perturb_edges(G2, args.edge_noise)
     if args.use_attr:
         x1 = perturb_attr(x1, args.attr_noise, args.strong_noise)
+        x1 = x1 / np.linalg.norm(x1, axis=1, keepdims=True)
 
     for edge in G1.edges():
         G1[edge[0]][edge[1]]['weight'] = 1

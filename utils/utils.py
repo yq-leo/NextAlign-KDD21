@@ -72,6 +72,7 @@ def merge_graphs(edge_index1, edge_index2, x1, x2, anchor_links):
             else:
                 x_pos[node_mapping[i]] = np.maximum(x1[0][node_mapping[i]], x2[0][i])
                 x_attr[node_mapping[i]] = np.maximum(x1[1][node_mapping[i]], x2[1][i])
+                # x_attr[node_mapping[i]] = x2[1][node_mapping[i]]
     if not isinstance(x1, tuple) and not isinstance(x2, tuple):
         x = np.array(x)
     else:

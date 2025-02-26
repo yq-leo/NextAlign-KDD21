@@ -6,7 +6,7 @@ from dgl.nn.pytorch import utils
 from dgl.base import DGLError
 
 
-class RelGCN(nn.Module):
+class RelGCN_dgl(nn.Module):
     def __init__(self, in_feat, out_feat, num_rels, bias=True, activation=None, self_loop=True, dropout=0.0, alpha=0.5, param=True):
         '''
         RelGCN layer for network alignment.
@@ -20,8 +20,8 @@ class RelGCN(nn.Module):
         @param dropout: dropout rate. Default is 0.
         @param alpha: hyper-parameter in Eq. (6).
         @param param: whether to apply weight matrices.
-
         '''
+
         super(RelGCN, self).__init__()
         self.in_feat = in_feat
         self.out_feat = out_feat
@@ -45,7 +45,6 @@ class RelGCN(nn.Module):
             nn.init.xavier_uniform_(self.loop_weight, gain=nn.init.calculate_gain('relu'))
 
         self.dropout = nn.Dropout(dropout)
-
 
     def base_message_func(self, edges, etypes):
         '''
@@ -110,3 +109,122 @@ class RelGCN(nn.Module):
             node_repr = self.dropout(node_repr)
 
             return node_repr
+
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_geometric.nn import MessagePassing
+from torch_geometric.utils import add_self_loops, degree
+from torch_scatter import scatter_add
+
+
+class RelGCN(nn.Module):
+    def __init__(self, in_feat, out_feat, num_rels, bias=True, activation=None, self_loop=True, dropout=0.0, alpha=0.5, param=True):
+        super(RelGCN, self).__init__()
+        self.in_feat = in_feat
+        self.out_feat = out_feat
+        self.num_rels = num_rels
+        self.bias = bias
+        self.activation = activation
+        self.self_loop = self_loop
+        self.dropout = dropout
+        self.alpha = alpha
+        self.param = param
+
+        self.weight = nn.Parameter(torch.Tensor(self.num_rels, self.in_feat, self.out_feat))
+        nn.init.xavier_uniform_(self.weight, gain=nn.init.calculate_gain('relu'))
+
+        if self.bias:
+            self.h_bias = nn.Parameter(torch.Tensor(out_feat))
+            nn.init.zeros_(self.h_bias)
+        if self.self_loop:
+            self.loop_weight = nn.Parameter(torch.Tensor(in_feat, out_feat))
+            nn.init.xavier_uniform_(self.loop_weight, gain=nn.init.calculate_gain('relu'))
+
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, edge_index, x, edge_type):
+        """
+        Forward pass of the RelGCN layer without DGL.
+
+        @param x: Node features (num_nodes, in_feat).
+        @param edge_index: Edge list (2, num_edges).
+        @param edge_type: Edge types (num_edges).
+        @return:
+            node_repr: Node embedding matrix (num_nodes, out_feat).
+        """
+
+        # Sanity check for edge types
+        if isinstance(edge_type, torch.Tensor):
+            if edge_type.size(0) != edge_index.size(1):
+                raise ValueError(f'"edge_type" tensor must have length equal to the number of edges. '
+                                 f'Got {edge_type.size(0)} and {edge_index.size(1)}.')
+
+        num_nodes = x.size(0)
+
+        # Self-loop handling
+        if self.self_loop:
+            if self.param:
+                if x.dtype == torch.int64:
+                    loop_message = self.loop_weight.index_select(0, x[:num_nodes])
+                else:
+                    loop_message = torch.matmul(x[:num_nodes], self.loop_weight)
+            else:
+                loop_message = x[:num_nodes]
+        else:
+            loop_message = torch.zeros_like(x)
+
+        # Message Passing
+        src, dst = edge_index
+        msg = self.message(x[src], edge_type)  # Call the message function for each edge
+
+        # Aggregation (similar to DGL's fn.sum)
+        aggregated_msg = scatter_add(msg, dst, dim=0, dim_size=num_nodes)
+
+        # Feature Fusion (scaling with sqrt(alpha))
+        node_repr = aggregated_msg * math.sqrt(self.alpha)
+
+        # Adding bias if present
+        if self.bias:
+            node_repr += self.h_bias
+
+        # Adding self-loop contribution
+        if self.self_loop:
+            node_repr += loop_message * math.sqrt(1 - self.alpha)
+
+        # Applying activation function if specified
+        if self.activation:
+            node_repr = self.activation(node_repr)
+
+        # Applying dropout
+        node_repr = self.dropout(node_repr)
+
+        return node_repr
+
+    def message(self, x_j, edge_type):
+        """
+        Message passing function without DGL.
+
+        @param x_j: Source node features (num_edges, in_feat).
+        @param edge_type: Edge types (num_edges), indicating which relation the edge belongs to.
+        @return:
+            msg: Messages to be passed along edges (num_edges, out_feat).
+        """
+        weight = self.weight  # Shape: (num_rels, in_feat, out_feat)
+
+        # Case 1: When input features are integer IDs (e.g., for embedding lookups)
+        if x_j.ndim == 1:
+            weight = weight.view(-1, weight.shape[2])  # Reshape to (num_rels * in_feat, out_feat)
+            flat_idx = edge_type * weight.shape[1] + x_j.to(torch.int64)  # Compute flattened index
+            msg = weight.index_select(0, flat_idx)  # Select corresponding weights
+        else:
+            # Case 2: When input features are real-valued (e.g., continuous node features)
+            if self.param:
+                selected_weight = weight[edge_type]  # Select relation-specific weights
+                msg = torch.bmm(x_j.unsqueeze(1), selected_weight).squeeze(1)  # Batch matrix multiplication
+            else:
+                msg = x_j  # If no transformation, pass features as-is
+
+        return msg
+
