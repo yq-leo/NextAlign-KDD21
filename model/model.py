@@ -82,9 +82,9 @@ class Model(nn.Module):
 
         out_x = self.combine(out_x)
         out_x = nn.functional.normalize(out_x, p=1, dim=-1)
-        self.out_x = out_x
+        # self.out_x = out_x
 
-        return self.out_x
+        return out_x
 
     def score(self, emb1, emb2, graph_name):
         '''

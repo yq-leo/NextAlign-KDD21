@@ -117,7 +117,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 # from torch_geometric.nn import MessagePassing
 # from torch_geometric.utils import add_self_loops, degree
-from torch_scatter import scatter_add
 
 
 class RelGCN(nn.Module):
